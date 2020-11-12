@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+	<!-- BoardAttachMapper 인터페이스의 SQL을 처리하는 XML을 만들었다. -->
+	<mapper namespace="org.zerock.mapper.BoardAttachMapper">
+		
+		<!-- 첨부파일을 DB에 등록하자, 업로드하자 -->
+		<insert id="insert">
+			INSERT INTO tbl_attach (uuid , uploadPath , fileName , fileType , bno)
+			VALUES ( #{uuid} , #{uploadPath} , #{fileName} , #{fileType}, #{bno})
+		</insert>
+		
+		<!-- 특정 첨부파일을 삭제한다. -->
+		<delete id="delete">
+			DELETE FROM tbl_attach WHERE uuid = #{uuid}
+		</delete>
+		
+		<!-- 특정 게시물의 첨부파일을 찾아라 -->
+		<select id="findByBno" resultType="org.zerock.domain.BoardAttachVO">
+			SELECT * FROM tbl_attach WHERE bno=#{bno}
+		</select>
+		
+		<!-- 게시물 삭제 시 첨부파일도 모두 삭제해야한다. -->
+		<delete id="deleteAll">
+			DELETE tbl_attach WHERE bno = #{bno}
+		</delete>
+		
+		
+		<!-- 잘못 올라간 파일을 삭제해야한다. 업로드된 파일들을 검색하기 위해서는 오늘 날짜를 제외한 나머지 파일을 검색해야한다.-->
+		<select id="getOldFiles" resultType="org.zerock.domain.BoardAttachVO">
+			SELECT * FROM tbl_attach WHERE uploadPath = TO_CHAR(sysdate - 1, 'yyyy/MM/dd')
+		</select>
+		
+	</mapper>

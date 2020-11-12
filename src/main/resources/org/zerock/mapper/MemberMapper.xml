@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--  여기서 id명은 mamberMapper 의 정의된 메서드와 이름이 같아야한다.  -->
+<mapper namespace="org.zerock.mapper.MemberMapper">
+
+	<!-- 
+		resultMap 왜 쓸까?
+		: MyBatis 에서는 하나의 결과에 부가적으로 여러개의 데이터를 처리하는 경우, 1:N의 결과를 처리하는 ResultMap 태그 사용
+		: DB필드값과 DTO의 property 가 다를 경우 쓴다. (type 에 DTO , id에 임의 값)
+	 -->
+	<resultMap type="org.zerock.domain.MemberVO" id="memberMap">
+			<id property="userid" column="userid" />
+			<result property="userid" column="userid" />
+			<result property="userpw" column="userpw" />
+			<result property="userName" column="userName" />
+			<result property="regDate" column="regDate" />
+			<result property="updateDate" column="updateDate" />
+			<collection property="authList" resultMap="authMap"></collection><!-- reusltMap 의 AuthMap을 쓸꺼야.. -->
+	</resultMap>
+	
+	<resultMap type="org.zerock.domain.AuthVO" id="authMap">
+		<result property="userid" column="userid" />
+		<result property="auth" column="auth" />
+	</resultMap>
+	
+	
+	
+	
+	
+	<!-- 1명의 회원 정보 조회 -->
+	<select id="read" resultMap="memberMap">
+		SELECT
+			mem.userid, userpw, userName, enabled, regDate, updateDate, auth
+		FROM
+			tbl_member mem LEFT OUTER JOIN tbl_member_auth auth on mem.userid = auth.userid
+		WHERE
+			mem.userid = #{userid}
+	</select>
+	
+	
+	
+	<!-- 페이징 처리된 전체 회원 정보 조회하기 -->
+	<!-- <select id="getListWithPaging" resultType="org.zerock.domain.MemberVO">
+		<![CDATA[
+			SELECT
+				userid, userpw, userName, enabled, regDate, updateDate, auth
+			FROM
+				(
+					SELECT /*+INDEX_DESC(tbl_member tbl_member_pk)*/
+						rownum rn, mem.userid, userpw, userName, enabled, regDate, updateDate, auth
+					FROM
+						tbl_member mem LEFT OUTER JOIN tbl_member_auth auth on mem.userid = auth.userid
+					WHERE
+		]]>
+		<include refid="criteria"></include>
+		<![CDATA[
+				rownum <= ${pageNum} * #{amount}
+			)
+			WHERE rn > (#{pageNum} - 1) * #{amount}
+		]]>
+	</select>
+	 -->
+	
+	
+	<select id="getListWithPaging" resultType="org.zerock.domain.MemberVO">
+	SELECT userid, userpw, userName, enabled, regDate, updateDate, auth
+	FROM (
+	    SELECT rownum rn, a.* FROM
+	    (SELECT 
+	    mem.userid, userpw, userName, enabled, regDate, updateDate, auth
+	    FROM
+	    tbl_member mem LEFT OUTER JOIN tbl_member_auth auth on mem.userid = auth.userid
+	    ORDER BY mem.regDate DESC
+	    ) a
+	    where
+		<include refid="criteria"></include>
+	<![CDATA[   		
+		rownum <= #{pageNum} * #{amount}
+	) 
+	WHERE rn > (#{pageNum} - 1) * #{amount}
+	]]>
+	</select>
+	
+	
+	
+	<!-- 회원정보 검색하기 : 목록과 데이터 개수 처리 -->
+	<sql id="criteria">
+		<trim prefix="(" suffix=") AND " prefixOverrides="OR">
+			<foreach item="type" collection="typeArr">
+				<trim prefix="OR">
+					<choose>
+						<when test="type=='T'.toString()">
+							title LIKE '%' || #{keyword} || '%'
+						</when>
+						<when test="type=='C'.toString()">
+							content LIKE '%' || #{keyword} || '%'
+						</when>
+						<when test="type=='W'.toString()">
+							writer LIKE '%' || #{keyword} || '%'
+						</when>
+					</choose>
+				</trim>
+			</foreach>
+		</trim>
+	</sql>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	<!-- 멤버등록하기 - PK값을 알 필요가 없는 경우 -->
+	<insert id="insert">	
+		insert into tbl_member (bno, title, content, writer, ip)
+		values(seq_member.nextval, #{title}, #{content}, #{writer}, #{ip})
+	</insert>
+	
+	<!-- 멤버등록하기 -->
+	<insert id="insertSelectKey">
+		INSERT INTO tbl_member (userid, userpw, userName)
+		VALUES (#{userid}, #{userpw}, #{userName})
+	</insert>
+	
+	
+	<!-- 멤버등록하기 -->
+	<insert id="insertAuth">
+		INSERT INTO tbl_member_auth (userid, auth)
+		VALUES (#{userid}, #{auth})
+	</insert>
+	
+	
+	
+	
+	
+	
+	<!-- 회원 삭제 처리 -->
+	<delete id="delete" >
+		DELETE tbl_member WHERE userid = #{userid}
+	</delete>
+	
+	
+	
+	
+	
+	
+	<!-- 회원 수정 처리 -->
+	<update id="update" >
+		UPDATE tbl_member
+		SET title = #{title},
+			content = #{content},
+			writer = #{writer},
+			updateDate = sysdate
+		WHERE userid = #{userid}
+	</update>
+	
+	
+	
+	
+	
+	
+	<!-- 회원 전체 수 구하기 : 회원상태가 1(정상)인 사람들의 전체 수 -->
+	<select id="getTotalCount" resultType="int">
+			SELECT count(*)
+			FROM tbl_member
+			WHERE
+		<include refid="criteria"></include>
+		<![CDATA[
+			enabled = '1'
+		]]>
+	</select>
+	
+	
+	
+	
+	
+	
+	
+</mapper>
